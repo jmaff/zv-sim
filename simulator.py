@@ -78,7 +78,19 @@ class Renderer:
         self.clock.tick(FRAMES_PER_SECOND)
 
 
-HUMAN_PATH_1 = [(0, 100, 100), (200, 500, 100), (400, 500, 500), (600, 100, 500)]
+HUMAN_PATH_1 = [
+    (0, 100, 100),
+    (200, 500, 100),
+    (400, 500, 500),
+    (600, 100, 500),
+]  # contacts animal
+
+HUMAN_PATH_2 = [
+    (0, 100, 100),
+    (0, 150, 100),
+    (400, 500, 500),
+    (600, 100, 500),
+]  # does not contact animal
 
 
 def main():
@@ -89,7 +101,7 @@ def main():
 
     reports = {seconds_to_sim_ticks(410): HumanSelfReport.SICK}
     path = {}
-    for p in HUMAN_PATH_1:
+    for p in HUMAN_PATH_2:
         path[seconds_to_sim_ticks(p[0])] = LocationRecord(x=p[1], y=p[2])
 
     human_agent = Human(id=0, location_history=path, reports=reports)
