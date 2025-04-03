@@ -5,6 +5,8 @@ import math
 
 from filters import TransmissionModel, bayesian_update
 
+CONTACT_NETWORK_PROXIMITY_THRESHOLD = 10
+
 
 @dataclass
 class LocationRecord:
@@ -12,17 +14,17 @@ class LocationRecord:
     y: float
 
 
-@dataclass
-class HumanContactRecord:
-    human_id: int
-    duration: int
-    proximity: float
-    time: int
-
-
 class HumanSelfReport(Enum):
     HEALTHY = 0
     SICK = 1
+
+
+@dataclass
+class HumanContactRecord:
+    other_id: int
+    other_status: HumanSelfReport  # other person's status at time of contact
+    duration: int
+    average_proximity: float
 
 
 class Human:
@@ -31,9 +33,9 @@ class Human:
     status: HumanSelfReport = HumanSelfReport.HEALTHY
     transmission_model: TransmissionModel = TransmissionModel()
 
-    location_history: Dict[int, LocationRecord] = []  # time -> location
-    contact_network: List[HumanContactRecord] = []
-    self_reports: Dict[int, HumanSelfReport] = []  # time -> report
+    location_history: Dict[int, LocationRecord] = {}  # time -> location
+    contact_network: Dict[int, HumanContactRecord] = {}  # time -> contact
+    self_reports: Dict[int, HumanSelfReport] = {}  # time -> report
 
     def __init__(
         self,
@@ -70,7 +72,35 @@ class Human:
                 self.transmission_model.add_hazard(animal.hazard_rate)
 
         # check if in contact with a person, update network + filter
-        ...
+        for human in sim.human_agents:
+            if human.id == self.id:
+                continue
+
+            dx = self.location.x - human.location.x
+            dy = self.location.y - human.location.y
+            dist = math.sqrt(dx**2 + dy**2)
+            if dist <= CONTACT_NETWORK_PROXIMITY_THRESHOLD:
+                print(f"Human {self.id} contacted other human {human.id}")
+
+                if sim.time_step - 1 in self.contact_network:
+                    # we were already in contact with this person
+                    record = self.contact_network[sim.time_step - 1]
+                    total_proximity = record.average_proximity * record.duration
+                    record.duration += 1
+                    record.average_proximity += (
+                        total_proximity + dist
+                    ) / record.duration
+
+                    self.contact_network[sim.time_step - 1] = record
+                else:
+                    # otherwise create a new contact record
+                    record = HumanContactRecord(
+                        other_id=human.id,
+                        other_status=human.status,
+                        duration=1,
+                        average_proximity=dist,
+                    )
+                    self.contact_network[sim.time_step] = record
 
         # calculate probabilities
         if self.status == HumanSelfReport.SICK:

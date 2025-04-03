@@ -78,6 +78,13 @@ class Renderer:
         self.clock.tick(FRAMES_PER_SECOND)
 
 
+def convert_path(input):
+    path = {}
+    for p in input:
+        path[seconds_to_sim_ticks(p[0])] = LocationRecord(x=p[1], y=p[2])
+    return path
+
+
 HUMAN_PATH_1 = [
     (0, 100, 100),
     (200, 500, 100),
@@ -87,10 +94,17 @@ HUMAN_PATH_1 = [
 
 HUMAN_PATH_2 = [
     (0, 100, 100),
-    (0, 150, 100),
+    (200, 150, 100),
     (400, 500, 500),
     (600, 100, 500),
 ]  # does not contact animal
+
+OTHER_HUMAN_PATH = [
+    (0, 200, 100),
+    (200, 160, 100),
+    (400, 490, 500),
+    (600, 300, 500),
+]  # contacts other human, does not contact animal
 
 
 def main():
@@ -100,12 +114,14 @@ def main():
     sim = Simulation()
 
     reports = {seconds_to_sim_ticks(410): HumanSelfReport.SICK}
-    path = {}
-    for p in HUMAN_PATH_2:
-        path[seconds_to_sim_ticks(p[0])] = LocationRecord(x=p[1], y=p[2])
+    path1 = convert_path(HUMAN_PATH_1)
 
-    human_agent = Human(id=0, location_history=path, reports=reports)
+    human_agent = Human(id=0, location_history=path1, reports=reports)
     sim.add_agent(human_agent)
+
+    path2 = convert_path(OTHER_HUMAN_PATH)
+    other_human_agent = Human(id=1, location_history=path2, reports={})
+    sim.add_agent(other_human_agent)
 
     animal_agent = AnimalPresence(
         id=0,
