@@ -22,29 +22,29 @@ def seconds_to_sim_ticks(s: float) -> int:
 
 class Simulation:
     def __init__(self):
-        self.human_agents: List[Human] = []
+        self.human_agents: Dict[Human] = {}  # id -> Human
         self.animal_agents: List[AnimalPresence] = []
         self.time_step = 0
 
     def add_agent(self, agent):
         if isinstance(agent, Human):
-            self.human_agents.append(agent)
+            self.human_agents[agent.id] = agent
         else:
             self.animal_agents.append(agent)
 
     def update(self):
-        for agent in chain(self.human_agents, self.animal_agents):
+        for agent in chain(self.human_agents.values(), self.animal_agents):
             agent.move(self)
 
-        for agent in chain(self.human_agents, self.animal_agents):
+        for agent in chain(self.human_agents.values(), self.animal_agents):
             agent.update(self)
 
         self.time_step += 1
 
     def print_results(self):
-        for h in self.human_agents:
+        for h in self.human_agents.values():
             print(f"*** HUMAN {h.id} ***")
-            print(f"Total animal hazard: {h.transmission_model.hazard_experienced}")
+            print(f"Total animal hazard: {h.hazard_experienced}")
             print(f"Contact network: {h.contact_network}")
             print(f"Sickness records: {h.sickness_records}")
             print("")
@@ -75,7 +75,7 @@ class Renderer:
 
             pygame.draw.circle(self.screen, color, (screen_x, screen_y), radius)
 
-        for agent in self.simulation.human_agents:
+        for agent in self.simulation.human_agents.values():
             screen_x = int(agent.location.x)
             screen_y = int(agent.location.y)
 
@@ -124,13 +124,14 @@ def main():
     sim = Simulation()
 
     reports = {seconds_to_sim_ticks(410): HumanSelfReport.SICK}
+    reports2 = {seconds_to_sim_ticks(500): HumanSelfReport.SICK}
     path1 = convert_path(HUMAN_PATH_1)
 
     human_agent = Human(id=0, location_history=path1, reports=reports)
     sim.add_agent(human_agent)
 
     path2 = convert_path(OTHER_HUMAN_PATH)
-    other_human_agent = Human(id=1, location_history=path2, reports={})
+    other_human_agent = Human(id=1, location_history=path2, reports=reports2)
     sim.add_agent(other_human_agent)
 
     animal_agent = AnimalPresence(

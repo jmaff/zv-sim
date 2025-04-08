@@ -3,9 +3,11 @@ from dataclasses import dataclass
 from enum import Enum
 import math
 
-from filters import TransmissionModel, bayesian_update
+from filters import bayesian_p_zoonotic
+from simulator import seconds_to_sim_ticks
 
 CONTACT_NETWORK_PROXIMITY_THRESHOLD = 10
+INCUBATION_SIM_TIME = seconds_to_sim_ticks(300)  # TODO: make much higher
 
 
 @dataclass
@@ -36,9 +38,10 @@ class HumanContactRecord:
 
 @dataclass
 class HumanSicknessRecord:
-    p_animal_transmission: float
     start_time: int
+    p_zoonotic: float = 0
     end_time: int = None
+    secondary_cases: int = 0
 
 
 @dataclass
@@ -58,7 +61,7 @@ class Human:
         self.location: LocationRecord = None
         self.status: HumanSelfReport = HumanSelfReport.HEALTHY
         self.prev_status: HumanSelfReport = HumanSelfReport.HEALTHY
-        self.transmission_model: TransmissionModel = TransmissionModel()
+        self.hazard_experienced: float = 0.0
 
         self.contact_network: Dict[int, HumanContactRecord] = {}  # time -> contact
         self.sickness_records: List[HumanSicknessRecord] = []
@@ -84,10 +87,10 @@ class Human:
 
             dist = math.sqrt(dx**2 + dy**2)
             if dist <= animal.radius:
-                self.transmission_model.add_hazard(animal.hazard_rate)
+                self.hazard_experienced += animal.hazard_rate
 
         # check if in contact with a person, update network + filter
-        for human in sim.human_agents:
+        for human in sim.human_agents.values():
             if human.id == self.id:
                 continue
 
@@ -99,7 +102,6 @@ class Human:
                 if human.id in self.active_contacts:
                     # we were already in contact with this person
                     self.active_contacts[human.id].total_proximity += dist
-                    print("existing record")
                 else:
                     # otherwise create a new contact record
                     record = HumanContactRecord(
@@ -108,28 +110,28 @@ class Human:
                         start_time=sim.time_step,
                         total_proximity=dist,
                     )
-                    print("new record")
                     self.active_contacts[human.id] = record
-
             else:
                 # check if we went out of conact
                 if human.id in self.active_contacts:
-                    print("contact ended")
-                    record = self.active_contacts[human.id]
+                    record = self.active_contacts.pop(human.id)
                     record.end_time = sim.time_step
                     self.contact_network[record.start_time] = record
-                    del self.active_contacts[human.id]
+
         # calculate probabilities
         if self.status == HumanSelfReport.SICK:
-            p = bayesian_update(self.transmission_model.get_p_animal_transmission())
 
             if self.prev_status == HumanSelfReport.HEALTHY:
                 record = HumanSicknessRecord(
-                    p_animal_transmission=p, start_time=sim.time_step
+                    start_time=sim.time_step,
                 )
                 self.sickness_records.append(record)
-            else:
-                self.sickness_records[-1].p_animal_transmission = p
+
+            secondary_cases = self.secondary_cases(sim)
+            p = bayesian_p_zoonotic(self.hazard_experienced, secondary_cases)
+
+            self.sickness_records[-1].p_zoonotic = p
+            self.sickness_records[-1].secondary_cases = secondary_cases
         elif (
             self.status == HumanSelfReport.HEALTHY
             and self.prev_status == HumanSelfReport.SICK
@@ -137,6 +139,24 @@ class Human:
             self.sickness_records[-1].end_time = sim.time_step
 
         self.prev_status = self.status
+
+    # only counts one case per sick contacted individual
+    def secondary_cases(self, sim):
+        if len(self.sickness_records) == 0 or self.status != HumanSelfReport.SICK:
+            raise ValueError("Tried to calculate secondary cases when not sick!")
+
+        infectious_at = self.sickness_records[-1].start_time - INCUBATION_SIM_TIME
+        secondary_cases = 0
+
+        for c in self.contact_network.values():
+            if c.start_time >= infectious_at:
+                other = sim.human_agents[c.other_id]
+                for sickness in other.sickness_records:
+                    if sickness.start_time >= infectious_at:
+                        secondary_cases += 1
+                        break
+
+        return secondary_cases
 
 
 class AnimalPresence:
