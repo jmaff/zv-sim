@@ -23,29 +23,46 @@ class HumanSelfReport(Enum):
 class HumanContactRecord:
     other_id: int
     other_status: HumanSelfReport  # other person's status at time of contact
-    duration: int
-    average_proximity: float
+    start_time: int
+    total_proximity: float
+    end_time: int = None
+
+    def duration(self):
+        return self.end_time - self.start_time
+
+    def average_proximity(self):
+        return self.total_proximity / self.duration()
 
 
+@dataclass
+class HumanSicknessRecord:
+    p_animal_transmission: float
+    start_time: int
+    end_time: int = None
+
+
+@dataclass
 class Human:
-    id: int
-    location: LocationRecord
-    status: HumanSelfReport = HumanSelfReport.HEALTHY
-    transmission_model: TransmissionModel = TransmissionModel()
-
-    location_history: Dict[int, LocationRecord] = {}  # time -> location
-    contact_network: Dict[int, HumanContactRecord] = {}  # time -> contact
-    self_reports: Dict[int, HumanSelfReport] = {}  # time -> report
-
     def __init__(
         self,
         id: int,
         location_history: Dict[int, LocationRecord],
         reports: Dict[int, HumanSelfReport],
     ):
-        self.id = id
-        self.location_history = location_history
-        self.self_reports = reports
+        self.id: int = id
+        self.location_history: Dict[int, LocationRecord] = (
+            location_history  # time -> location
+        )
+        self.self_reports: Dict[int, HumanSelfReport] = reports  # time -> report
+
+        self.location: LocationRecord = None
+        self.status: HumanSelfReport = HumanSelfReport.HEALTHY
+        self.prev_status: HumanSelfReport = HumanSelfReport.HEALTHY
+        self.transmission_model: TransmissionModel = TransmissionModel()
+
+        self.contact_network: Dict[int, HumanContactRecord] = {}  # time -> contact
+        self.sickness_records: List[HumanSicknessRecord] = []
+        self.active_contacts: Dict[int, HumanContactRecord] = {}  # other id -> contact
 
     def move(self, sim):
         if sim.time_step in self.location_history:
@@ -55,7 +72,6 @@ class Human:
             pass
 
         if sim.time_step in self.self_reports:
-            print("updating status")
             self.status = self.self_reports[sim.time_step]
 
     def update(self, sim):
@@ -68,7 +84,6 @@ class Human:
 
             dist = math.sqrt(dx**2 + dy**2)
             if dist <= animal.radius:
-                print(f"Human {self.id} contacted animal presence {animal.id}")
                 self.transmission_model.add_hazard(animal.hazard_rate)
 
         # check if in contact with a person, update network + filter
@@ -79,33 +94,49 @@ class Human:
             dx = self.location.x - human.location.x
             dy = self.location.y - human.location.y
             dist = math.sqrt(dx**2 + dy**2)
+
             if dist <= CONTACT_NETWORK_PROXIMITY_THRESHOLD:
-                print(f"Human {self.id} contacted other human {human.id}")
-
-                if sim.time_step - 1 in self.contact_network:
+                if human.id in self.active_contacts:
                     # we were already in contact with this person
-                    record = self.contact_network[sim.time_step - 1]
-                    total_proximity = record.average_proximity * record.duration
-                    record.duration += 1
-                    record.average_proximity += (
-                        total_proximity + dist
-                    ) / record.duration
-
-                    self.contact_network[sim.time_step - 1] = record
+                    self.active_contacts[human.id].total_proximity += dist
+                    print("existing record")
                 else:
                     # otherwise create a new contact record
                     record = HumanContactRecord(
                         other_id=human.id,
                         other_status=human.status,
-                        duration=1,
-                        average_proximity=dist,
+                        start_time=sim.time_step,
+                        total_proximity=dist,
                     )
-                    self.contact_network[sim.time_step] = record
+                    print("new record")
+                    self.active_contacts[human.id] = record
 
+            else:
+                # check if we went out of conact
+                if human.id in self.active_contacts:
+                    print("contact ended")
+                    record = self.active_contacts[human.id]
+                    record.end_time = sim.time_step
+                    self.contact_network[record.start_time] = record
+                    del self.active_contacts[human.id]
         # calculate probabilities
         if self.status == HumanSelfReport.SICK:
             p = bayesian_update(self.transmission_model.get_p_animal_transmission())
-            print(f"Human {self.id} is sick! P(infected by an animal | sick) = {p}")
+
+            if self.prev_status == HumanSelfReport.HEALTHY:
+                record = HumanSicknessRecord(
+                    p_animal_transmission=p, start_time=sim.time_step
+                )
+                self.sickness_records.append(record)
+            else:
+                self.sickness_records[-1].p_animal_transmission = p
+        elif (
+            self.status == HumanSelfReport.HEALTHY
+            and self.prev_status == HumanSelfReport.SICK
+        ):
+            self.sickness_records[-1].end_time = sim.time_step
+
+        self.prev_status = self.status
 
 
 class AnimalPresence:

@@ -13,6 +13,8 @@ SIM_TICK_TIME_SECONDS = 10
 FRAMES_PER_SECOND = 30
 REAL_SECONDS_PER_SIM_SECOND = FRAMES_PER_SECOND * SIM_TICK_TIME_SECONDS
 
+STOP_SIM_AFTER = 700
+
 
 def seconds_to_sim_ticks(s: float) -> int:
     return int(s / SIM_TICK_TIME_SECONDS)
@@ -20,8 +22,8 @@ def seconds_to_sim_ticks(s: float) -> int:
 
 class Simulation:
     def __init__(self):
-        self.human_agents = []
-        self.animal_agents = []
+        self.human_agents: List[Human] = []
+        self.animal_agents: List[AnimalPresence] = []
         self.time_step = 0
 
     def add_agent(self, agent):
@@ -38,6 +40,14 @@ class Simulation:
             agent.update(self)
 
         self.time_step += 1
+
+    def print_results(self):
+        for h in self.human_agents:
+            print(f"*** HUMAN {h.id} ***")
+            print(f"Total animal hazard: {h.transmission_model.hazard_experienced}")
+            print(f"Contact network: {h.contact_network}")
+            print(f"Sickness records: {h.sickness_records}")
+            print("")
 
 
 class Renderer:
@@ -141,6 +151,11 @@ def main():
 
         sim.update()
         renderer.render()
+
+        if sim.time_step > seconds_to_sim_ticks(STOP_SIM_AFTER):
+            running = False
+
+    sim.print_results()
 
     pygame.quit()
 
