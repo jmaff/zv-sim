@@ -44,7 +44,7 @@ class Simulation:
             print(f"*** HUMAN {h.id} ***")
             print(f"Final infection model: {h.infection_model}\n")
             print(f"Contact network: {h.contact_network}\n")
-            print(f"Sickness records: {h.sickness_records}\n")
+            print(f"Sickness records: {h.sickness_records}")
             print(f"*** END HUMAN {h.id} ***\n")
 
 

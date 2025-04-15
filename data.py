@@ -44,7 +44,7 @@ D0_H0_LOCATIONS = [
     (400, 500, 500),
     (600, 100, 500),
 ]  # contacts animal
-D0_H0_REPORTS = [(410, HumanStatus.SICK)]
+D0_H0_REPORTS = [(380, HumanStatus.SICK)]
 D0_H0 = build_human(0, D0_H0_LOCATIONS, D0_H0_REPORTS)
 
 D0_H1_LOCATIONS = [

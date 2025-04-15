@@ -181,13 +181,19 @@ class Human:
         for c in self.contact_network.values():
             if c.start_time >= infectious_at:
                 other = sim.human_agents[c.other_id]
+                incremented = False
                 for sickness in other.sickness_records:
                     if (
                         sickness.start_time >= infectious_at
                         and c.other_status == HumanStatus.HEALTHY
                     ):
                         secondary_cases += 1
+                        incremented = True
                         break
+
+                if incremented:
+                    # only count each contacted person once
+                    break
 
         return secondary_cases
 
