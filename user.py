@@ -87,6 +87,9 @@ class InfectionModel:
     def total_experienced_hazard(self) -> float:
         return self.experienced_animal_hazard + self.experienced_human_hazard
 
+    def __str__(self):
+        return f"(output_hazard={self.output_hazard}, exp_animal_hazard={self.experienced_animal_hazard}, exp_human_hazard={self.experienced_human_hazard})"
+
 
 SIMULATE_SPREAD = False  # change to False to only use reported illness
 

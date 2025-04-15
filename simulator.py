@@ -42,10 +42,10 @@ class Simulation:
     def print_results(self):
         for h in self.human_agents.values():
             print(f"*** HUMAN {h.id} ***")
-            print(f"Infection model: {h.infection_model}")
-            print(f"Contact network: {h.contact_network}")
-            print(f"Sickness records: {h.sickness_records}")
-            print("")
+            print(f"Final infection model: {h.infection_model}\n")
+            print(f"Contact network: {h.contact_network}\n")
+            print(f"Sickness records: {h.sickness_records}\n")
+            print(f"*** END HUMAN {h.id} ***\n")
 
 
 USE_DISPLAY = True

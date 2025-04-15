@@ -38,6 +38,9 @@ class HumanContactRecord:
     def average_proximity(self):
         return self.total_proximity / self.duration()
 
+    def __repr__(self):
+        return f"(other_id={self.other_id}, other_status={self.other_status}, start={self.start_time}, duration={self.duration()}, avg_proximity={self.average_proximity()})"
+
 
 @dataclass
 class HumanSicknessRecord:
@@ -46,6 +49,9 @@ class HumanSicknessRecord:
     p_zoonotic: float = 0
     end_time: int = None
     secondary_cases: int = 0
+
+    def __repr__(self):
+        return f"(p_zoonotic={self.p_zoonotic}, start={self.start_time}, end={self.end_time}, start_animal_hazard={self.start_infection_model.experienced_animal_hazard}, start_human_hazard={self.start_infection_model.experienced_human_hazard}, secondary_cases={self.secondary_cases})"
 
 
 @dataclass
