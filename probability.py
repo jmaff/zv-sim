@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import math
 
 from scipy.stats import poisson

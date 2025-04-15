@@ -4,29 +4,78 @@ import math
 import random
 
 from agents import HumanStatus
+from probability import *
 
 
 # Called if there's no location data for this timestep
-def human_motion(human):
-    # random walk
-    human.location.x += random.randint(-5, 5)
-    human.location.y += random.randint(-5, 5)
+def human_motion(human, current_time):
+    # DO NOTHING
+    # pass
+
+    # RANDOM WALK
+    # human.location.x += random.randint(-5, 5)
+    # human.location.y += random.randint(-5, 5)
+
+    # WEIGHTED RANDOM WALK (to next known location)
+    next_location = next(
+        (loc for t, loc in sorted(human.location_history.items()) if t > current_time),
+        None,
+    )
+
+    if next_location is None:
+        return
+
+    WEIGHTED_RANDOM_WALK_BIAS_STRENGTH = 0.5
+
+    dx = next_location.x - human.location.x
+    dy = next_location.y - human.location.y
+    dist = math.hypot(dx, dy)
+
+    if dist == 0:
+        direction = (0, 0)
+    else:
+        direction = (dx / dist, dy / dist)
+
+    angle_noise = random.uniform(-math.pi, math.pi)
+    noise_dx = math.cos(angle_noise)
+    noise_dy = math.sin(angle_noise)
+
+    dx = (
+        WEIGHTED_RANDOM_WALK_BIAS_STRENGTH * direction[0]
+        + (1 - WEIGHTED_RANDOM_WALK_BIAS_STRENGTH) * noise_dx
+    )
+    dy = (
+        WEIGHTED_RANDOM_WALK_BIAS_STRENGTH * direction[1]
+        + (1 - WEIGHTED_RANDOM_WALK_BIAS_STRENGTH) * noise_dy
+    )
+
+    norm = math.hypot(dx, dy)
+    dx = (dx / norm) * 5.0
+    dy = (dy / norm) * 5.0
+
+    human.location.x += dx
+    human.location.y += dy
 
 
 # Called if there's no location data for this timestep
 def animal_motion(animal):
-    # do nothing
+    # DO NOTHING
     pass
 
-    # random walk
+    # RANDOM WALK
     # animal.location.x += random.randint(-5, 5)
     # animal.location.y += random.randint(-5, 5)
     # animal.radius += random.randint(-5, 5)
 
 
 # P(zoonotic) model for a sick human
-def zoonotic_probability_model() -> float:
-    pass
+def zoonotic_probability_model(sickness_record) -> float:
+    hazard_experienced = sickness_record.start_infection_model.experienced_animal_hazard
+    secondary_cases = sickness_record.secondary_cases
+
+    return bayesian_p_zoonotic(
+        hazard_experienced=hazard_experienced, secondary_cases=secondary_cases
+    )
 
 
 @dataclass

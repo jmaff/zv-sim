@@ -80,7 +80,7 @@ class Human:
         if sim.time_step in self.location_history:
             self.location = self.location_history[sim.time_step]
         else:
-            user.human_motion(self)
+            user.human_motion(self, sim.time_step)
 
         if sim.time_step in self.self_reports:
             self.status = self.self_reports[sim.time_step]
@@ -151,15 +151,12 @@ class Human:
                 self.sickness_records.append(record)
 
             secondary_cases = self.secondary_cases(sim)
-            p = bayesian_p_zoonotic(
-                self.sickness_records[
-                    -1
-                ].start_infection_model.experienced_animal_hazard,
-                secondary_cases,
+            self.sickness_records[-1].secondary_cases = secondary_cases
+
+            self.sickness_records[-1].p_zoonotic = user.zoonotic_probability_model(
+                self.sickness_records[-1]
             )
 
-            self.sickness_records[-1].p_zoonotic = p
-            self.sickness_records[-1].secondary_cases = secondary_cases
         elif (
             self.status == HumanStatus.HEALTHY and self.prev_status == HumanStatus.SICK
         ):
