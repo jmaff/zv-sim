@@ -44,7 +44,7 @@ class Simulation:
     def print_results(self):
         for h in self.human_agents.values():
             print(f"*** HUMAN {h.id} ***")
-            print(f"Total animal hazard: {h.hazard_experienced}")
+            print(f"Infection model: {h.infection_model}")
             print(f"Contact network: {h.contact_network}")
             print(f"Sickness records: {h.sickness_records}")
             print("")
@@ -79,7 +79,11 @@ class Renderer:
             screen_x = int(agent.location.x)
             screen_y = int(agent.location.y)
 
-            color = (0, 0, 255)  # Blue for humans
+            if agent.status == HumanStatus.SICK:
+                color = (255, 0, 0)  # sick human = red
+            else:
+                color = (0, 0, 255)  # healthy human = blue
+
             radius = 5
 
             pygame.draw.circle(self.screen, color, (screen_x, screen_y), radius)
@@ -123,8 +127,8 @@ def main():
 
     sim = Simulation()
 
-    reports = {seconds_to_sim_ticks(410): HumanSelfReport.SICK}
-    reports2 = {seconds_to_sim_ticks(500): HumanSelfReport.SICK}
+    reports = {seconds_to_sim_ticks(410): HumanStatus.SICK}
+    reports2 = {seconds_to_sim_ticks(500): HumanStatus.SICK}
     path1 = convert_path(HUMAN_PATH_1)
 
     human_agent = Human(id=0, location_history=path1, reports=reports)
@@ -138,7 +142,7 @@ def main():
         id=0,
         migration_pattern={0: LocationRecord(x=450, y=150)},
         radius=100,
-        hazard_rate=0.1,
+        hazard_rate=0.05,
     )
     sim.add_agent(animal_agent)
 

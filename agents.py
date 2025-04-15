@@ -3,8 +3,16 @@ from dataclasses import dataclass
 from enum import Enum
 import math
 
-from filters import bayesian_p_zoonotic
+from probability import bayesian_p_zoonotic
 from simulator import seconds_to_sim_ticks
+
+
+class HumanStatus(Enum):
+    HEALTHY = 0
+    SICK = 1
+
+
+import user
 
 CONTACT_NETWORK_PROXIMITY_THRESHOLD = 10
 INCUBATION_SIM_TIME = seconds_to_sim_ticks(300)  # TODO: make much higher
@@ -16,15 +24,10 @@ class LocationRecord:
     y: float
 
 
-class HumanSelfReport(Enum):
-    HEALTHY = 0
-    SICK = 1
-
-
 @dataclass
 class HumanContactRecord:
     other_id: int
-    other_status: HumanSelfReport  # other person's status at time of contact
+    other_status: HumanStatus  # other person's status at time of contact
     start_time: int
     total_proximity: float
     end_time: int = None
@@ -50,29 +53,31 @@ class Human:
         self,
         id: int,
         location_history: Dict[int, LocationRecord],
-        reports: Dict[int, HumanSelfReport],
+        reports: Dict[int, HumanStatus],
     ):
         self.id: int = id
         self.location_history: Dict[int, LocationRecord] = (
             location_history  # time -> location
         )
-        self.self_reports: Dict[int, HumanSelfReport] = reports  # time -> report
+        self.self_reports: Dict[int, HumanStatus] = reports  # time -> report
 
         self.location: LocationRecord = None
-        self.status: HumanSelfReport = HumanSelfReport.HEALTHY
-        self.prev_status: HumanSelfReport = HumanSelfReport.HEALTHY
-        self.hazard_experienced: float = 0.0
+        self.status: HumanStatus = HumanStatus.HEALTHY
+        self.prev_status: HumanStatus = HumanStatus.HEALTHY
 
         self.contact_network: Dict[int, HumanContactRecord] = {}  # time -> contact
         self.sickness_records: List[HumanSicknessRecord] = []
         self.active_contacts: Dict[int, HumanContactRecord] = {}  # other id -> contact
 
+        self.infection_model: user.InfectionModel = user.InfectionModel(
+            output_hazard=0.0, experienced_hazard=0.0
+        )
+
     def move(self, sim):
         if sim.time_step in self.location_history:
             self.location = self.location_history[sim.time_step]
         else:
-            # random walk? nothing?
-            pass
+            user.human_motion(self)
 
         if sim.time_step in self.self_reports:
             self.status = self.self_reports[sim.time_step]
@@ -81,13 +86,15 @@ class Human:
         # check if previous contacts are sick, update filter
 
         # check if in animal radius, update filter
+        current_animal_contacts: List[AnimalPresence] = []
         for animal in sim.animal_agents:
             dx = self.location.x - animal.location.x
             dy = self.location.y - animal.location.y
 
             dist = math.sqrt(dx**2 + dy**2)
             if dist <= animal.radius:
-                self.hazard_experienced += animal.hazard_rate
+                # self.hazard_experienced += animal.hazard_rate
+                current_animal_contacts.append(animal)
 
         # check if in contact with a person, update network + filter
         for human in sim.human_agents.values():
@@ -118,23 +125,36 @@ class Human:
                     record.end_time = sim.time_step
                     self.contact_network[record.start_time] = record
 
-        # calculate probabilities
-        if self.status == HumanSelfReport.SICK:
+        current_human_contacts = [
+            sim.human_agents[h] for h in self.active_contacts.keys()
+        ]
 
-            if self.prev_status == HumanSelfReport.HEALTHY:
+        got_sick = user.infection_probability_model(
+            self, current_animal_contacts, current_human_contacts
+        )
+        # add sickness event / update status if simulated sick
+        if got_sick and self.status != HumanStatus.SICK:
+            print(f"t={sim.time_step} Human {self.id} simulated sick!")
+            self.status = HumanStatus.SICK
+
+        # calculate probabilities
+        if self.status == HumanStatus.SICK:
+
+            if self.prev_status == HumanStatus.HEALTHY:
                 record = HumanSicknessRecord(
                     start_time=sim.time_step,
                 )
                 self.sickness_records.append(record)
 
             secondary_cases = self.secondary_cases(sim)
-            p = bayesian_p_zoonotic(self.hazard_experienced, secondary_cases)
+            p = bayesian_p_zoonotic(
+                self.infection_model.experienced_hazard, secondary_cases
+            )
 
             self.sickness_records[-1].p_zoonotic = p
             self.sickness_records[-1].secondary_cases = secondary_cases
         elif (
-            self.status == HumanSelfReport.HEALTHY
-            and self.prev_status == HumanSelfReport.SICK
+            self.status == HumanStatus.HEALTHY and self.prev_status == HumanStatus.SICK
         ):
             self.sickness_records[-1].end_time = sim.time_step
 
@@ -142,7 +162,7 @@ class Human:
 
     # only counts one case per sick contacted individual
     def secondary_cases(self, sim):
-        if len(self.sickness_records) == 0 or self.status != HumanSelfReport.SICK:
+        if len(self.sickness_records) == 0 or self.status != HumanStatus.SICK:
             raise ValueError("Tried to calculate secondary cases when not sick!")
 
         infectious_at = self.sickness_records[-1].start_time - INCUBATION_SIM_TIME
@@ -152,7 +172,10 @@ class Human:
             if c.start_time >= infectious_at:
                 other = sim.human_agents[c.other_id]
                 for sickness in other.sickness_records:
-                    if sickness.start_time >= infectious_at:
+                    if (
+                        sickness.start_time >= infectious_at
+                        and c.other_status == HumanStatus.HEALTHY
+                    ):
                         secondary_cases += 1
                         break
 
@@ -160,26 +183,24 @@ class Human:
 
 
 class AnimalPresence:
-    id: int
     location: LocationRecord
     radius: float
-
-    hazard_rate: float  # per sim tick (TODO: change to per real time unit?)
-    migration_pattern: Dict[int, LocationRecord]
 
     def __init__(
         self, id: int, migration_pattern: Dict[int, LocationRecord], radius, hazard_rate
     ):
-        self.id = id
-        self.migration_pattern = migration_pattern
-        self.radius = radius
-        self.hazard_rate = hazard_rate
+        self.id: int = id
+        self.location: LocationRecord = None
+        self.migration_pattern: Dict[int, LocationRecord] = migration_pattern
+        self.radius: float = radius
+        self.infection_model: user.InfectionModel = user.InfectionModel(
+            output_hazard=hazard_rate, experienced_hazard=0.0
+        )
 
     def move(self, sim):
         if sim.time_step in self.migration_pattern:
             self.location = self.migration_pattern[sim.time_step]
         else:
-            # random walk? nothing?
-            pass
+            user.animal_motion(self)
 
     def update(self, sim): ...
