@@ -1,10 +1,8 @@
 from typing import List, Dict
 from dataclasses import dataclass
 from enum import Enum
+from copy import deepcopy
 import math
-
-from probability import bayesian_p_zoonotic
-from simulator import seconds_to_sim_ticks
 
 
 class HumanStatus(Enum):
@@ -12,6 +10,8 @@ class HumanStatus(Enum):
     SICK = 1
 
 
+from probability import bayesian_p_zoonotic
+from simulator import seconds_to_sim_ticks
 import user
 
 CONTACT_NETWORK_PROXIMITY_THRESHOLD = 10
@@ -42,6 +42,7 @@ class HumanContactRecord:
 @dataclass
 class HumanSicknessRecord:
     start_time: int
+    start_infection_model: user.InfectionModel
     p_zoonotic: float = 0
     end_time: int = None
     secondary_cases: int = 0
@@ -70,7 +71,9 @@ class Human:
         self.active_contacts: Dict[int, HumanContactRecord] = {}  # other id -> contact
 
         self.infection_model: user.InfectionModel = user.InfectionModel(
-            output_hazard=0.0, experienced_hazard=0.0
+            output_hazard=0.0,
+            experienced_animal_hazard=0.0,
+            experienced_human_hazard=0.0,
         )
 
     def move(self, sim):
@@ -143,12 +146,16 @@ class Human:
             if self.prev_status == HumanStatus.HEALTHY:
                 record = HumanSicknessRecord(
                     start_time=sim.time_step,
+                    start_infection_model=deepcopy(self.infection_model),
                 )
                 self.sickness_records.append(record)
 
             secondary_cases = self.secondary_cases(sim)
             p = bayesian_p_zoonotic(
-                self.infection_model.experienced_hazard, secondary_cases
+                self.sickness_records[
+                    -1
+                ].start_infection_model.experienced_animal_hazard,
+                secondary_cases,
             )
 
             self.sickness_records[-1].p_zoonotic = p
@@ -194,7 +201,9 @@ class AnimalPresence:
         self.migration_pattern: Dict[int, LocationRecord] = migration_pattern
         self.radius: float = radius
         self.infection_model: user.InfectionModel = user.InfectionModel(
-            output_hazard=hazard_rate, experienced_hazard=0.0
+            output_hazard=hazard_rate,
+            experienced_animal_hazard=0.0,
+            experienced_human_hazard=0.0,
         )
 
     def move(self, sim):
