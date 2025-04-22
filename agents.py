@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from copy import deepcopy
 import math
+import tqdm
 
 
 class HumanStatus(Enum):
@@ -68,7 +69,9 @@ class Human:
         )
         self.self_reports: Dict[int, HumanStatus] = reports  # time -> report
 
-        self.location: LocationRecord = None
+        self.location: LocationRecord = self.location_history[
+            min(self.location_history)
+        ]
         self.status: HumanStatus = HumanStatus.HEALTHY
         self.prev_status: HumanStatus = HumanStatus.HEALTHY
 
@@ -143,7 +146,7 @@ class Human:
         )
         # add sickness event / update status if simulated sick
         if got_sick and self.status != HumanStatus.SICK:
-            print(f"t={sim.time_step} Human {self.id} simulated sick!")
+            # print(f"t={sim.time_step} Human {self.id} simulated sick!")
             self.status = HumanStatus.SICK
 
         # calculate probabilities
@@ -206,8 +209,10 @@ class AnimalPresence:
         self, id: int, migration_pattern: Dict[int, LocationRecord], radius, hazard_rate
     ):
         self.id: int = id
-        self.location: LocationRecord = None
         self.migration_pattern: Dict[int, LocationRecord] = migration_pattern
+        self.location: LocationRecord = self.migration_pattern[
+            min(self.migration_pattern)
+        ]
         self.radius: float = radius
         self.infection_model: user.InfectionModel = user.InfectionModel(
             output_hazard=hazard_rate,
