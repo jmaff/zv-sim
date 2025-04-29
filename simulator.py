@@ -141,7 +141,7 @@ def save_data(data, value):
 
 
 if __name__ == "__main__":
-    print("**ZD-Sim**")
+    print("**ZV-Sim**")
     print(f"1 sim second = {REAL_SECONDS_PER_SIM_SECOND} real world seconds")
 
     all_results = []
