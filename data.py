@@ -33,6 +33,49 @@ def build_animal(id, locations, radius, hazard_rate):
     )
 
 
+### REPORT DATASET (RD) ###
+# Two human agents, H0 spends much longer in presence of high hazard A0.
+# H1 spends much less time in presence of low hazard A1, and additionally only gets sick after contacting H0
+# H1's location data is incomplete, and doesn't directly include them contacting A1
+
+RD_H0_LOCATIONS = [
+    (0, 50, 150),
+    (30, 200, 150),
+    (290, 200, 150),
+    (300, 300, 150),
+    (400, 300, 200),
+    (500, 300, 275),
+]
+RD_H0_REPORTS = [(310, HumanStatus.SICK)]
+RD_H0 = build_human(0, RD_H0_LOCATIONS, RD_H0_REPORTS)
+
+RD_H1_LOCATIONS = [
+    (0, 50, 350),
+    (260, 200, 350),
+    (300, 300, 350),
+    (400, 300, 275),
+    (500, 300, 200),
+]
+RD_H1_REPORTS = [(450, HumanStatus.SICK)]
+RD_H1 = build_human(1, RD_H1_LOCATIONS, RD_H1_REPORTS)
+
+
+RD_HUMANS = [RD_H0, RD_H1]
+
+RD_A0_LOCATIONS = [(0, 200, 150)]
+RD_A0_RADIUS = 40
+RD_A0_HAZARD_RATE = 0.2
+RD_A0 = build_animal(0, RD_A0_LOCATIONS, RD_A0_RADIUS, RD_A0_HAZARD_RATE)
+
+RD_A1_LOCATIONS = [(0, 200, 350)]
+RD_A1_RADIUS = 40
+RD_A1_HAZARD_RATE = 0.05
+RD_A1 = build_animal(1, RD_A1_LOCATIONS, RD_A1_RADIUS, RD_A1_HAZARD_RATE)
+
+RD_ANIMALS = [RD_A0, RD_A1]
+
+### EXPERIMENTAL / AD-HOC DATASETS ###
+
 #### DATASET 0 ####
 # Humans: 2
 # Animal presences: 1
@@ -64,23 +107,6 @@ D0_A0_HAZARD_RATE = 0.05
 D0_A0 = build_animal(0, D0_A0_LOCATIONS, D0_A0_RADIUS, D0_A0_HAZARD_RATE)
 
 D0_ANIMALS = [D0_A0]
-
-#### DATASET 1 ####
-# Humans: 2
-# Animal presences: 1
-# H0 -> Contacts H1, THEN has animal contact; Expect low/zero P(zoonotic)
-# H1 -> No animal contact; expect zero P(zoonotic)
-
-#### DATASET 2 ####
-# Humans: 4
-# Animal presences: 2
-# H0 -> No animal contact
-# H1 -> Exposure to A0 (high hazard), none to A1 (low hazard); expect higher P(zoonotic)
-# H2 -> Exposure to A1, none to A0; expect lower P(zoonotic)
-
-
-# change motion model and compare cases
-# change levels of reported / calculated spread
 
 
 #### DATASET 3 ####
@@ -180,3 +206,52 @@ D3_A3_HAZARD_RATE = 0.0
 D3_A3 = build_animal(3, D3_A3_LOCATIONS, D3_A3_RADIUS, D3_A3_HAZARD_RATE)
 
 D3_ANIMALS = [D3_A0, D3_A1, D3_A2, D3_A3]
+
+
+#### DATASET 4 ####
+
+D4_H0_LOCATIONS = [
+    (0, 20, 20),
+    (200, 200, 100),
+    (210, 220, 100),
+    (400, 400, 100),
+    (600, 500, 100),
+]
+D4_H0_REPORTS = [(550, HumanStatus.SICK)]
+D4_H0 = build_human(0, D4_H0_LOCATIONS, D4_H0_REPORTS)
+
+D4_H1_LOCATIONS = [
+    (0, 20, 200),
+    (200, 200, 300),
+    (210, 220, 300),
+    (400, 400, 300),
+    (600, 500, 300),
+]
+D4_H1_REPORTS = [(500, HumanStatus.SICK)]
+D4_H1 = build_human(1, D4_H1_LOCATIONS, D4_H1_REPORTS)
+
+D4_H2_LOCATIONS = [
+    (0, 200, 300),
+]
+D4_H2_REPORTS = [(0, HumanStatus.SICK)]
+D4_H2 = build_human(2, D4_H2_LOCATIONS, D4_H2_REPORTS)
+
+D4_H3_LOCATIONS = [
+    (0, 300, 300),
+]
+D4_H3_REPORTS = [(0, HumanStatus.SICK)]
+D4_H3 = build_human(3, D4_H3_LOCATIONS, D4_H3_REPORTS)
+
+D4_HUMANS = [D4_H0, D4_H1, D4_H2, D4_H3]
+
+D4_A0_LOCATIONS = [(0, 300, 100)]
+D4_A0_RADIUS = 45
+D4_A0_HAZARD_RATE = 0.1
+D4_A0 = build_animal(0, D4_A0_LOCATIONS, D4_A0_RADIUS, D4_A0_HAZARD_RATE)
+
+D4_A1_LOCATIONS = [(0, 200, 100)]
+D4_A1_RADIUS = 5
+D4_A1_HAZARD_RATE = 0.005
+D4_A1 = build_animal(1, D4_A1_LOCATIONS, D4_A1_RADIUS, D4_A1_HAZARD_RATE)
+
+D4_ANIMALS = [D4_A0, D4_A1]

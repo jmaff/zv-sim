@@ -15,8 +15,8 @@ from probability import bayesian_p_zoonotic
 from simulator import seconds_to_sim_ticks
 import user
 
-CONTACT_NETWORK_PROXIMITY_THRESHOLD = 10
-INCUBATION_SIM_TIME = seconds_to_sim_ticks(300)  # TODO: make much higher
+CONTACT_NETWORK_PROXIMITY_THRESHOLD = 20
+INCUBATION_SIM_TIME = seconds_to_sim_ticks(300)
 
 
 @dataclass
@@ -226,4 +226,5 @@ class AnimalPresence:
         else:
             user.animal_motion(self)
 
-    def update(self, sim): ...
+    def update(self, sim):
+        pass

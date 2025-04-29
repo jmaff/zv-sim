@@ -19,46 +19,12 @@ def human_motion(human, current_time):
     )
 
     # DO NOTHING
-    # pass
+    # return
 
     # RANDOM WALK
     # human.location.x += random.randint(-5, 5)
     # human.location.y += random.randint(-5, 5)
-
-    # WEIGHTED RANDOM WALK (to next known location)
-    # if next_location is None:
-    #     return
-
-    # WEIGHTED_RANDOM_WALK_BIAS_STRENGTH = 0.5
-
-    # dx = next_location.x - human.location.x
-    # dy = next_location.y - human.location.y
-    # dist = math.hypot(dx, dy)
-
-    # if dist == 0:
-    #     direction = (0, 0)
-    # else:
-    #     direction = (dx / dist, dy / dist)
-
-    # angle_noise = random.uniform(-math.pi, math.pi)
-    # noise_dx = math.cos(angle_noise)
-    # noise_dy = math.sin(angle_noise)
-
-    # dx = (
-    #     WEIGHTED_RANDOM_WALK_BIAS_STRENGTH * direction[0]
-    #     + (1 - WEIGHTED_RANDOM_WALK_BIAS_STRENGTH) * noise_dx
-    # )
-    # dy = (
-    #     WEIGHTED_RANDOM_WALK_BIAS_STRENGTH * direction[1]
-    #     + (1 - WEIGHTED_RANDOM_WALK_BIAS_STRENGTH) * noise_dy
-    # )
-
-    # norm = math.hypot(dx, dy)
-    # dx = (dx / norm) * 5.0
-    # dy = (dy / norm) * 5.0
-
-    # human.location.x += dx * 5.0
-    # human.location.y += dy * 5.0
+    # return
 
     # NOISY LINEAR INTERPOLATION
     if next_location is None:
@@ -77,7 +43,7 @@ def human_motion(human, current_time):
 # Called if there's no location data for this timestep
 def animal_motion(animal):
     # DO NOTHING
-    pass
+    return
 
     # RANDOM WALK
     # animal.location.x += random.randint(-5, 5)
@@ -108,11 +74,11 @@ class InfectionModel:
         return f"(output_hazard={self.output_hazard}, exp_animal_hazard={self.experienced_animal_hazard}, exp_human_hazard={self.experienced_human_hazard})"
 
 
-SIMULATE_SPREAD = True  # change to False to only use reported illness
+SIMULATE_SPREAD = False  # change to False to only use reported illness
 
 # parameters for basic infection model
 HUMAN_HAZARD_HEALTHY = 0.0
-HUMAN_HAZARD_SICK = 0.03
+HUMAN_HAZARD_SICK = 0.7
 HAZARD_DECAY = 0.99
 
 

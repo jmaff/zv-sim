@@ -18,7 +18,7 @@ GRID_HEIGHT = 600
 SIM_TICK_TIME_SECONDS = 10
 REAL_SECONDS_PER_SIM_SECOND = FRAMES_PER_SECOND * SIM_TICK_TIME_SECONDS
 
-STOP_SIM_AFTER = 1000
+STOP_SIM_AFTER = 600
 
 
 def seconds_to_sim_ticks(s: float) -> int:
@@ -85,6 +85,11 @@ class Simulation:
 
 
 USE_DISPLAY = False
+SAVE_DATA = True
+NUM_TRIALS = 1000
+GLOBAL_DESC = int(time.time())
+MOTION_MODEL_DESC = "h_noisy_interp"
+DATASET_DESC = "RD"
 
 
 def trial():
@@ -94,8 +99,8 @@ def trial():
     if USE_DISPLAY:
         display = Display(simulation=sim, width=GRID_WIDTH, height=GRID_HEIGHT)
 
-    animals = copy.deepcopy(D3_ANIMALS)
-    humans = copy.deepcopy(D3_HUMANS)
+    animals = copy.deepcopy(RD_ANIMALS)
+    humans = copy.deepcopy(RD_HUMANS)
 
     for a in chain(animals, humans):
         sim.add_agent(a)
@@ -110,8 +115,6 @@ def trial():
         if sim.time_step > seconds_to_sim_ticks(STOP_SIM_AFTER):
             running = False
 
-    # sim.print_results()
-
     if USE_DISPLAY:
         display.cleanup()
 
@@ -119,13 +122,8 @@ def trial():
     return sim.get_results()
 
 
-NUM_TRIALS = 1000
-GLOBAL_DESC = int(time.time())
-MOTION_MODEL_DESC = "h_noisy_interp"
-
-
 def save_data(data, value):
-    np.save(f"data/{MOTION_MODEL_DESC}/{GLOBAL_DESC}_{value}.npy", data)
+    np.save(f"data/{DATASET_DESC}/{MOTION_MODEL_DESC}/{GLOBAL_DESC}_{value}.npy", data)
 
     num_rows = data.shape[0]
     plt.figure()
@@ -136,7 +134,9 @@ def save_data(data, value):
     plt.title(f"{value} by ID (n={NUM_TRIALS} trials)")
 
     plt.savefig(
-        f"data/{MOTION_MODEL_DESC}/{GLOBAL_DESC}_{value}", dpi=300, bbox_inches="tight"
+        f"data/{DATASET_DESC}/{MOTION_MODEL_DESC}/{GLOBAL_DESC}_{value}",
+        dpi=300,
+        bbox_inches="tight",
     )
 
 
@@ -151,13 +151,6 @@ if __name__ == "__main__":
         time.sleep(0.001)
 
     num_humans = len(all_results[0])
-    print(all_results[0][0].sickness_p_zoonotic)
-    print(all_results[1][0].sickness_p_zoonotic)
-
-    # secondary_cases = defaultdict(list)
-    # animal_hazard = defaultdict(list)
-    # human_hazard = defaultdict(list)
-    # p_zoonotic = defaultdict(list)
 
     secondary_cases = np.empty((num_humans, NUM_TRIALS))
     animal_hazard = np.empty((num_humans, NUM_TRIALS))
@@ -171,7 +164,8 @@ if __name__ == "__main__":
             human_hazard[id][trial_num] = human_res.sickness_human_hazard
             p_zoonotic[id][trial_num] = human_res.sickness_p_zoonotic
 
-    save_data(secondary_cases, "Secondary Cases")
-    save_data(animal_hazard, "Animal Hazard @ Sickness")
-    save_data(human_hazard, "Human Hazard @ Sickness")
-    save_data(p_zoonotic, "P(Sickness from Zoonotic Origin)")
+    if SAVE_DATA:
+        save_data(secondary_cases, "Secondary Cases")
+        save_data(animal_hazard, "Animal Hazard @ Sickness")
+        save_data(human_hazard, "Human Hazard @ Sickness")
+        save_data(p_zoonotic, "P(Sickness from Zoonotic Origin)")
